@@ -110,11 +110,11 @@ node myindex.js
 При разработке использовались следующие материалы:
 
 **Книги:**
-- Salvatore Loreto, Simon Pietro Romano. Real-Time Communication with WebRTC. 
+- Salvatore Loreto, Simon Pietro Romano. Real-Time Communication with WebRTC. O'Reilly Media.
 
 **Научные статьи:**
-- Zinah Tareq Nayyef, Sarah Faris Amer, Zena Hussain. Peer to Peer Multimedia Real-Time Communication System based on WebRTC Technology. International Journal of Engineering & Technology (2018).
-- Edim Azom Emmanuel, Bakwa Dunka Dirting. A Peer-To-Peer Architecture For Real-Time Communication Using WebRTC. Journal of Multidisciplinary Engineering Science Studies (JMESS),  April 2017.
+- Zinah Tareq Nayyef, Sarah Faris Amer, Zena Hussain. Peer to Peer Multimedia Real-Time Communication System based on WebRTC Technology. International Journal of Engineering & Technology, 7 (2.9) (2018) 125–130.
+- Edim Azom Emmanuel, Bakwa Dunka Dirting. A Peer-To-Peer Architecture For Real-Time Communication Using WebRTC. Journal of Multidisciplinary Engineering Science Studies (JMESS), Vol. 3 Issue 4, April 2017.
 
 **Статьи и публикации:**
 - [Using WebRTC to implement P2P video streaming — DEV Community](https://dev.to/logrocket/using-webrtc-to-implement-p2p-video-streaming-5f5g) 
