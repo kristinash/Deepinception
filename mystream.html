@@ -1,0 +1,1089 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+<head> 
+    <meta charset="UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepInception</title>
+    <link rel="stylesheet" href="./styles_admin.css">
+</head>
+<body>
+<header>
+    <div class="logo">Deep<span>Inception</span></div>
+    <div class="header-right">
+        <div class="room-badge">Комната: <span id="roomLabel"></span></div> 
+        <div class="viewers-badge">
+            <div class="dot"></div>
+            <span>Зрителей онлайн: </span>
+            <div class="num" id="viewersNum">0</div>
+            <button id="logoutBtn" class="logout-btn" title="Вернуться на главную">Выход</button>
+        </div>
+    </div>
+</header>
+
+<main>
+    <button class="chat-toggle-btn" id="chatToggleBtn">⬡ Чат</button>
+    <div class="left-col">
+        <div class="room-badge-mobile">Комната: <span id="roomLabelMobile"></span></div>
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="videoLoader" accept="video/*">
+            <div class="upload-icon">⬡</div>
+            <div class="upload-text">Нажмите или перетащите файл<br><em>для трансляции видео</em></div>
+            <div class="upload-hint">MP4, MKV, WebM и другие форматы</div>
+        </div>
+        
+
+       <div class="player-wrap" id="playerWrap">
+            <video id="player" autoplay></video>
+            <div class="custom-video-controls" id="customControls">
+                <button id="playPauseBtn" class="ctrl-btn" title="Пауза/Воспроизведение">⏸</button>
+                <div class="ctrl-time" id="ctrlTime">0:00 / 0:00</div>
+                <div class="ctrl-progress-wrap">
+                    <div class="ctrl-progress-bar" id="progressBar">
+                        <div class="ctrl-progress-fill" id="progressFill"></div>
+                        <div class="ctrl-progress-thumb" id="progressThumb"></div>
+                    </div>
+                </div>
+                <button id="adminMuteBtn" class="ctrl-btn" title="Звук">🔊</button>
+                <button id="adminFsBtn" class="ctrl-btn" title="На весь экран">⛶</button>
+            </div>
+                
+            <div class="admin-toast" id="adminToast">
+                <span class="admin-toast-name" id="adminToastName"></span>
+                <span class="admin-toast-text" id="adminToastText"></span>
+            </div>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-left">
+                <div class="status-dot" id="statusDot"></div>
+                Статус: <b id="statusText">Ожидание файла</b>
+            </div>
+            <div class="info-right">"Кино начинается с выбора истории"</div>
+            <div class="kino">
+                <input type="file" id="videoLoaderSwap" accept="video/*" style="display:none;">
+                <button id="swapBt" onclick="document.getElementById('videoLoaderSwap').click()">
+                    ⬡ Сменить файл
+                </button>
+               
+            </div>
+             <button  id="qrBtn" onclick="showQR()">⬡ QR </button> 
+        </div>
+        <button id="statsBtn" onclick="toggleStatsTable()">⬡ Статистика</button>
+<div id="statsTableWrap" style="display:none; overflow-x:auto; margin-top:8px;">
+  <table id="statsTable" style="width:100%; border-collapse:collapse; font-size:12px;">
+    <thead>
+      <tr id="statsHead" style="border-bottom:1px solid #ccc;"></tr>
+    </thead>
+    <tbody id="statsBody"></tbody>
+  </table>
+  <div id="statsStatus" style="font-size:11px; color:gray; margin-top:4px;"></div>
+</div>
+    </div>
+    
+    <div class="chat-panel">
+        <div class="chat-header">⬡ Чат комнаты</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-wrap">
+             <div class="emoji-panel" id="emojiPanel">
+                <div class="emoji-tabs" id="emojiTabs"></div>
+                <div class="emoji-grid" id="emojiGrid"></div>
+            </div>
+            <button class="emoji-toggle-btn" id="emojiToggleBtn">☺</button>
+            <input class="chat-input" id="chatInput" placeholder="Сообщение">
+            <button class="chat-send" id="chatSendBtn">Отправить</button>
+        </div>
+    </div>
+</main>
+
+<div class="ticker">
+    <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div id="qrModal" class="qr-modal-overlay" onclick="closeQRModal(event)">
+    <div class="qr-modal-box">
+        <div class="qr-modal-title">⬡ QR-код комнаты</div>
+        <div class="qr-modal-room" id="qrRoomLabel"></div>
+        <div id="qrCanvas" class="qr-canvas"></div>
+        <div class="qr-modal-link" id="qrLink"></div>
+        <div class="qr-modal-btns">
+            <button onclick="shareQR()" class="qr-btn-share">⬡ Поделиться</button>
+            <button onclick="document.getElementById('qrModal').style.display='none'" class="qr-btn-close">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script src="./mysignalserverclass.js"></script>
+<script>
+    let viewersList = [];
+function closeQRModal(e) {
+
+    if (e.target===document.getElementById("qrModal")) {
+        document.getElementById('qrModal').style.display='none';
+    }
+}
+
+
+function showQR() {
+    const modal = document.getElementById('qrModal');
+    const canvas = document.getElementById('qrCanvas');
+    canvas.innerHTML = '';
+
+    const host = 'https://'+ location.hostname ;
+    
+    const joinUrl = host + '/myclient.html?room=' + encodeURIComponent(roomId)
+              + (password ? '&pass=' + encodeURIComponent(password) : '');
+    
+    document.getElementById('qrRoomLabel').textContent = 'Комната: ' + roomId;
+  
+    document.getElementById('qrLink').innerHTML = joinUrl;
+   
+    new QRCode(canvas, {
+        text: joinUrl,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.L
+    });
+
+    modal.style.display = 'flex';
+}
+
+async function shareQR() {
+    const host ='https://'+ location.hostname ;
+   
+    const joinUrl = host + '/myclient.html?room=' + encodeURIComponent(roomId)
+              + (password ? '&pass=' + encodeURIComponent(password) : '');
+   if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && navigator.share)  {
+     
+        await navigator.share({
+            title: 'DeepInception — комната ' + roomId,
+            text: 'Присоединяйся к просмотру!',
+            url: joinUrl
+        }).catch(err => {
+  
+    const btn = document.querySelector('#qrModal button.qr-btn-share');
+    const originalText = btn.textContent;
+    navigator.clipboard.writeText(joinUrl).then(() => {
+        btn.textContent = '✓ Скопировано';
+        setTimeout(() => btn.textContent = originalText, 1500);
+    });
+})
+    } else {
+    const btn = document.querySelector('#qrModal button');
+       
+     if (btn.textContent!== '✓ Скопировано') {
+            const text = btn.textContent;
+            await navigator.clipboard.writeText(joinUrl);
+        btn.textContent = '✓ Скопировано';
+        setTimeout(() => btn.textContent = text, 1500);
+    }
+}
+}
+
+
+   
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+   
+    window.location.href = 'startpage.html';
+});
+
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    const chatPanel = document.querySelector('.chat-panel');
+    let isChatOpen = false;
+
+    chatToggleBtn.addEventListener('click', () => {
+        chatPanel.classList.toggle('open');
+        isChatOpen = chatPanel.classList.contains('open');
+        chatToggleBtn.classList.toggle('active', isChatOpen);
+        chatToggleBtn.textContent = isChatOpen ? '✕ Закрыть' : '⬡ Чат';
+        if (isChatOpen) {
+            chatToggleBtn.classList.remove('new-message');
+        }
+    });
+
+    document.querySelector('main').addEventListener('click', (e) => {
+        if (!isChatOpen) return;
+        if (!chatPanel.contains(e.target) && !chatToggleBtn.contains(e.target)) {
+            chatPanel.classList.toggle('open');
+            isChatOpen = false;
+            chatToggleBtn.classList.remove('active', 'new-message');
+            chatToggleBtn.textContent = '⬡ Чат';
+        }
+    });
+
+    const emojiCategories = [
+        { icon: "😊", emojis: ["😀","😂","😍","😎","😢","😡","🥳","🤔","😴","🤩","😏","🥺","😤","🤗","😬","🤪","😇","🥰","😈","👻","💀","🤡","👾","🤖"] },
+        { icon: "👍", emojis: ["👍","👎","👏","🙌","🤝","✌️","🤞","👌","🤙","💪","🙏","👋","🤜","🫶","☝️","🤟","🤘","🫵","👈","👉","🫂","🤲"] },
+        { icon: "❤️", emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💕","💞","💓","💗","💖","💘","💝","💔","❣️","💟","💋","😘","🥰"] },
+        { icon: "🎉", emojis: ["🎉","🎊","🎈","🎁","🏆","🥇","🎖️","🎗️","🎀","🎆","🎇","✨","🌟","⭐","🔥","💥","🎯","🎮","🎲","🃏","🎰"] },
+        { icon: "🍕", emojis: ["🍕","🍔","🍟","🌭","🍿","🥚","🍳","🧇","🥞","🍞","🥐","🧀","🌮","🌯","🍜","🍱","🍣","🍦","🍰","☕","🧋"] },
+    ];
+
+    let activeCat = 0;
+
+    function renderEmojiTabs() {
+        const tabs = document.getElementById('emojiTabs');
+        tabs.innerHTML = "";
+        emojiCategories.forEach((cat, i) => {
+            const btn = document.createElement('button');
+            btn.textContent = cat.icon;
+            btn.className = 'emoji-tab' + (i === activeCat ? ' active' : '');
+            btn.onclick = () => {
+                activeCat = i;
+                document.querySelectorAll('.emoji-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderEmojiGrid();
+            };
+            tabs.appendChild(btn);
+        });
+    }
+
+    function renderEmojiGrid() {
+        const grid = document.getElementById("emojiGrid");
+        grid.innerHTML = '';
+        emojiCategories[activeCat].emojis.forEach(em => {
+            const btn = document.createElement('button');
+            btn.className = 'emoji-btn';
+            btn.textContent = em;
+            btn.onclick = () => {
+                const input = document.getElementById('chatInput');
+                const pos = input.selectionStart;
+                input.value = input.value.slice(0, pos) + em + input.value.slice(pos);
+                const newpos = pos + em.length;
+                input.focus();
+                input.setSelectionRange(newpos, newpos);
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    document.getElementById("emojiToggleBtn").onclick = () => {
+        document.getElementById('emojiPanel').classList.toggle("open");
+    };
+
+    document.addEventListener('click', (e) => {
+        const panel = document.getElementById('emojiPanel');
+        const emojiToggleBtn = document.getElementById('emojiToggleBtn');
+        if (!panel.contains(e.target) && !emojiToggleBtn.contains(e.target) && !e.target.classList.contains('emoji-tab')) {
+            panel.classList.remove('open');
+        }
+    });
+
+    renderEmojiTabs();
+    renderEmojiGrid();
+
+    // if (!sessionStorage.getItem('roomId')) {
+    //     window.location.replace('startpage.html');
+    // }
+
+    const words = [
+        "I am your father",
+        "The first rule of Fight Club is: you do not talk about Fight Club",
+        "I'll be back",
+        "Bond. James Bond",
+        "I'm going to make him an offer he can't refuse",
+        "May the Force be with you",
+        "Houston, we have a problem",
+        "We buy things we don't need, to impress people we don't like"
+    ];
+    document.getElementById("tickerTrack").innerHTML = [...words, ...words]
+        .map(q => `<span class="ticker-item"><span>⬡</span>${q}</span>`).join("");
+
+    const viewers    = document.getElementById("viewersNum");
+   
+    const _p = new URLSearchParams(location.search);
+
+
+const roomId      = _p.get('roomId');
+const type        = _p.get('type');
+const description = _p.get('desc')     || '';
+const maxViewers  = _p.get('maxV')     || '';
+const CreateId    = _p.get('createId') || '';
+const password    = _p.get('pass')     || '';
+
+ function setChatVisible(visible) {
+    document.querySelector('.chat-panel').style.display = visible ? '' : 'none';
+    document.getElementById('chatToggleBtn').style.display = visible ? '' : 'none';
+}
+if (!roomId || !type || (type !== 'public' && type !== 'private')) {
+    
+    window.location.replace('startpage.html');
+   
+}
+
+
+
+function nameToColor(name) {
+if (name === 'Админ') return '#f5c842';
+    const colors = [
+        '#e05c5c', '#e07a5c', '#e0b55c', '#8dbd4e',
+        '#4eb87a', '#4eb8b8', '#4e82e0', '#8a4ee0',
+        '#c44ee0', '#e04ea8', '#5ca8e0', '#a0c44e'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + hash * 31;
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+    function addMessage(name, text) {
+        const messages = document.getElementById('chatMessages');
+        const msg = document.createElement('div');
+        msg.className = 'chat-msg';
+        const color = nameToColor(name);
+        msg.innerHTML = `<div class='chat-msg-name' style="color:${color}">${name}</div>
+                         <div class='chat-msg-text'>${text}</div>`;
+        messages.append(msg);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    document.getElementById("roomLabel").textContent       = roomId || '-';
+    document.getElementById("roomLabelMobile").textContent = roomId || '-';
+
+    const channel = new SignalServer(roomId, "admin", type, description, password, CreateId, maxViewers);
+    channel.onclose = () => {
+    window.location.href = 'startpage.html';
+};
+
+channel.onerror = () => {
+    window.location.href = 'startpage.html';
+};
+
+    document.getElementById('chatSendBtn').addEventListener('click', () => {
+        const message = document.getElementById('chatInput').value;
+        if (message) {
+            channel.postMessage({ type: "post-message", name: 'Админ', message, roomId });
+            document.getElementById('chatInput').value = '';
+        }
+    });
+
+    document.getElementById('chatInput').addEventListener('keydown', e => {
+        const message = document.getElementById('chatInput').value;
+        if (message && e.key === 'Enter') {
+            channel.postMessage({ type: "post-message", name: 'Админ', message, roomId });
+            document.getElementById('chatInput').value = '';
+        }
+    });
+
+
+    let sharedstream = null;
+    let currentFile  = null;
+    let state        = 'Ожидание выбора файла';
+    let probeCancelled = false;
+
+   
+function releaseStream() {
+    if (sharedstream) {
+        sharedstream.getTracks().forEach(t => t.stop());
+        sharedstream = null;
+    }
+}
+window.addEventListener('beforeunload', () => {
+    releaseStream();
+    Object.values(peerConnection).forEach(pc => pc.close());
+});
+
+  
+    
+    videoLoader.onchange = function () {
+        releaseStream();
+        const file = this.files[0];
+        if (!file) return;
+        currentFile = file;
+        document.getElementById("swapBt").style.display = 'block';
+        document.getElementById("playerWrap").classList.add("visible");
+        document.getElementById('uploadZone').style.display = 'none';
+
+        player.src = URL.createObjectURL(file);
+        player.load();
+        document.getElementById("statusDot").className = "status-dot live";
+        document.getElementById("statusText").textContent = "В эфире";
+
+        player.oncanplay = () => {
+            sharedstream = player.captureStream()
+                // startVideoFreezeMonitor();
+        //        sharedstream.getVideoTracks().forEach(track => {
+        //      track.contentHint = 'motion';
+        //  });
+
+            channel.postMessage({ type: "new-file", roomId });
+            player.oncanplay = null;
+        };
+        this.value = "";
+    };
+
+    videoLoaderSwap.onchange = function () {
+         if (isProbing) {
+        probeCancelled = true;
+        probingQueue = [];        
+        if (probeResolve) probeResolve();
+    }
+         releaseStream();
+        const file = this.files[0];
+        if (!file) return;
+        currentFile = file;
+        player.src = URL.createObjectURL(file);
+        player.load();
+
+        player.oncanplay = () => {
+            sharedstream = player.captureStream()
+               
+        //        sharedstream.getVideoTracks().forEach(track => {
+        //      track.contentHint = 'motion';
+        //  });
+
+            channel.postMessage({ type: "new-file", roomId });
+            player.oncanplay = null;
+        };
+        this.value = "";
+    };
+    
+
+    player.addEventListener("pause", () => {
+        channel.postMessage({ type: 'pause', roomId });
+        document.getElementById("statusDot").className = "status-dot";
+        state = "pause";
+        document.getElementById('statusText').textContent = 'Пауза';
+    });
+    player.addEventListener('error', (e) => {
+    if (!player.error || player.src === '' || player.src === window.location.href) return;
+
+    const codes = {
+        1: 'Загрузка прервана',
+        2: 'Сетевая ошибка',
+        3: 'Неподдерживаемый кодек',
+        4: 'Формат не поддерживается'
+    };
+    const msg = codes[player.error?.code] || 'Неизвестная ошибка';
+    console.error('Video error:', player.error?.code, player.error?.message);
+
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusText').textContent = '⚠ ' + msg;
+    document.getElementById('playerWrap').classList.remove('visible');
+    document.getElementById('uploadZone').style.display = '';
+    swapBt
+     document.getElementById('swapBt').style.display = 'none';
+});
+
+    player.addEventListener("play", () => {
+        channel.postMessage({ type: 'play', roomId });
+        document.getElementById("statusDot").className = "status-dot live";
+        state = "play";
+        document.getElementById('statusText').textContent = 'В эфире';
+    });
+
+    player.addEventListener("ended", () => {
+        player.play();
+        sharedstream = player.captureStream()
+        
+//          sharedstream.getVideoTracks().forEach(track => {
+//     track.contentHint = 'motion'; 
+//  });
+        channel.postMessage({ type: "new-file", roomId });
+    });
+
+    const peerConnection    = {};
+    const pendingCandidates = {};
+
+
+function getQualityParams(viewerCount) {
+    // if (viewerCount <= 2)  return { maxBitrate: 3_000_000, maxFramerate: 24, scaleDown: 1.0   };
+    if (viewerCount <= 4)  return { maxBitrate: 3_000_000, maxFramerate: 24, scaleDown: 1.0   };
+    if (viewerCount <= 8)  return { maxBitrate: 2_500_000, maxFramerate: 20, scaleDown: 1.5   };
+    return { maxBitrate: 2_000_000, maxFramerate: 18, scaleDown: 2.25   }; 
+}
+
+
+
+let statsInterval = null;
+function toggleStatsTable() {
+    const wrap = document.getElementById('statsTableWrap');
+    const visible = wrap.style.display !== 'none';
+    if (visible) {
+        wrap.style.display = 'none';
+        clearInterval(statsInterval);
+        statsInterval = null;
+    } else {
+        wrap.style.display = 'block';
+        renderStatsTable();
+        statsInterval = setInterval(renderStatsTable, 2000);
+    }
+}
+
+const _prevStats = {};
+
+
+async function collectStats() {
+    const rows = [];
+    const now = Date.now();
+    for (const [peerId, pc] of Object.entries(peerConnection)) {
+        if (!pc || pc.connectionState === 'closed') continue;
+        const report = await pc.getStats();
+        const viewer = viewersList.find(v => v.id === peerId);
+        const row = {
+            id: peerId,
+            name: viewer ? viewer.name : '—',   
+            fps: null,
+            cpuLimit: null,
+            bitrateKbps: null,
+        };
+        report.forEach(stat => {
+            if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+                row.fps = stat.framesPerSecond != null ? Math.round(stat.framesPerSecond) : null;
+                row.cpuLimit = stat.qualityLimitationReason ?? null;
+                const prev = _prevStats[peerId];
+                if (prev && stat.bytesSent != null) {
+                    const dtSec = (now - prev.ts) / 1000;
+                    const dBytes = stat.bytesSent - (prev.bytesSent ?? 0);
+                    row.bitrateKbps = dtSec > 0 ? Math.round((dBytes * 8) / dtSec / 1000) : null;
+                }
+                _prevStats[peerId] = { ts: now, bytesSent: stat.bytesSent };
+            }
+        });
+        rows.push(row);
+    }
+    return rows;
+}
+
+const COLS = [
+      { key: 'name', label: 'Name' },   
+    { key: 'fps', label: 'FPS' },
+    { key: 'cpuLimit', label: 'CPU / BW limit' },
+    { key: 'bitrateKbps', label: 'bitrateKbps' },
+     { key: 'action', label: 'Delete' }
+];
+
+async function renderStatsTable() {
+    const rows = await collectStats();
+    const head = document.getElementById('statsHead');
+    const body = document.getElementById('statsBody');
+    const status = document.getElementById('statsStatus');
+    if (!head.children.length) {
+        head.innerHTML = COLS.map(c => `<th class="stats-table-th">${c.label}</th>`).join('');
+    }
+    if (!rows.length) {
+         body.innerHTML = ''; 
+        return;
+    }
+    body.innerHTML = rows.map(row => {
+            const cells = COLS.map(col => {
+                if (col.key === 'action') {
+                    return `<td class="stats-cell"><button class="kick-btn" data-id="${row.id}">Удалить</button></td>`;
+                }
+                let val = row[col.key];
+                if (col.key === 'cpuLimit' && !val) val = 'none';
+                return `<td class="stats-cell">${(val != null && val !== '') ? val : '—'}</td>`;
+            }).join('');
+            return `<tr class="stats-row">${cells}</tr>`;
+        }).join(''); 
+
+}
+
+
+
+document.getElementById('statsTableWrap').addEventListener('click', (e) => {
+    const btn = e.target.closest('.kick-btn');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    removeFromProbingQueue(id);
+    if (peerConnection[id]) {
+        peerConnection[id].close();
+        delete peerConnection[id];
+    }
+    if (currentProbeId === id && probeResolve) {
+        probeResolve();
+    }
+    viewersList = viewersList.filter(v => v.id !== id);
+      if (statsInterval) renderStatsTable();
+    applyQualityToAll(Object.keys(peerConnection).length);
+    channel.postMessage({ type: "force-leave", id, roomId });
+});
+
+async function applyQualityToAll(viewerCount) {
+
+        const { maxBitrate, maxFramerate, scaleDown  } = getQualityParams(viewerCount);
+        for (const id of Object.keys(peerConnection)) {
+            const pc = peerConnection[id];
+            if (!pc || pc.connectionState === 'closed' || pc.signalingState === 'closed') continue;
+            for (const sender of pc.getSenders()) {
+                if (sender.track?.kind !== 'video') continue;
+                const params = sender.getParameters();
+                if (!params.encodings?.length) continue;
+                params.encodings[0].maxBitrate  = maxBitrate;
+                params.encodings[0].maxFramerate = maxFramerate;
+                params.encodings[0].scaleResolutionDownBy = scaleDown;
+                try { await sender.setParameters(params); } catch (err) {
+                    console.warn(`[applyQuality] ${id}:`, err.message);
+                }
+            }
+        }
+
+}
+
+
+
+
+
+
+    channel.onmessage = async (e) => {
+        const id = e.data.id;
+
+        if (e.data.type === "icecandidate") {
+            if (peerConnection[id]?.remoteDescription) {
+                peerConnection[id].addIceCandidate(e.data.candidate);
+            } else {
+                if (!pendingCandidates[id]) pendingCandidates[id] = [];
+                pendingCandidates[id].push(e.data.candidate);
+            }
+
+        } else if (e.data.type === "answer") {
+            console.log("received answer from", id);
+            await peerConnection[id]?.setRemoteDescription(e.data);
+
+            if (pendingCandidates[id]) {
+                pendingCandidates[id].forEach(cand => peerConnection[id].addIceCandidate(cand));
+                delete pendingCandidates[id];
+            }
+           
+             
+
+        } else if (e.data.type === "joined-channel") {
+            channel.postMessage({ type: "videostate", state, id, roomId });
+            const viewerCount = e.data.viewers;
+            viewers.textContent = viewerCount;
+           
+        if (!viewersList.find(v => v.id === e.data.id)) {
+        viewersList.push({ id: e.data.id, name: e.data.name });
+    }
+           
+           
+        if (statsInterval) renderStatsTable(); 
+            if (currentFile) {
+                if (probingQueue.some(item => item.id === id)) return;
+                if (currentProbeId === id) {
+                            if (peerConnection[id]) {
+                                peerConnection[id].close();
+                                delete peerConnection[id];
+                            }
+                            if (probeResolve) probeResolve();
+                            setTimeout(() => admitWithProbe(id, viewerCount), 0);
+                            return;
+                        }
+                await admitWithProbe(id, viewerCount);
+
+            }
+
+        } else if (e.data.type === "receive-message") {
+            addMessage(e.data.name, e.data.message);
+            showAdminToast(e.data.name, e.data.message);
+            if (!isChatOpen) chatToggleBtn.classList.add('new-message');
+
+        } else if (e.data.type === "error-admin-exists") {
+            window.location.replace('startpage.html');
+
+        } 
+         else if (e.data.type === "error-wrong-secret") {
+    window.location.replace('startpage.html');
+}
+        else if (e.data.type === "count") {
+           viewers.textContent = e.data.viewers
+        } 
+        else if (e.data.type === "admin_again_here") {
+             const viewerCount = e.data.viewerscount;
+            viewers.textContent = viewerCount;
+            viewersList = Object.entries(e.data.allnames || {}).map(([id, name]) => ({ id, name }));
+            //viewers.textContent = Object.keys(peerConnection).length;
+
+        } else if (e.data.type === "chat-history") {
+            e.data.messages.forEach(msg => addMessage(msg.name, msg.text));
+
+        } else if (e.data.type === "leave-channel") {
+              viewersList = viewersList.filter(v => v.id !== e.data.id);
+   
+            const viewerCount = e.data.viewers;
+            viewers.textContent = viewerCount;
+             removeFromProbingQueue(id);
+            if (peerConnection[id]) {
+                peerConnection[id].close();
+                delete peerConnection[id];
+            }
+             if (currentProbeId === id && probeResolve) {
+                probeResolve();  
+            }
+             if (statsInterval) renderStatsTable();
+           
+            await applyQualityToAll(Object.keys(peerConnection).length);
+        }
+    };
+
+let isProbing = false;
+let probeResolve = null;
+let probingQueue = [];
+let currentProbeId = null;  
+let isProcessingQueue  = false
+
+function removeFromProbingQueue(id) {
+    const before = probingQueue.length;
+    probingQueue = probingQueue.filter(item => item.id !== id);
+    
+}
+
+
+const MIN_FPS_MAJORITY = 15;   
+const MIN_FPS_ANY = 13;        
+
+
+async function hasCpuQualityLimit(peerIds) {
+    for (const id of peerIds) {
+        const pc = peerConnection[id];
+        if (!pc || pc.connectionState === 'closed') continue;
+        const stats = await pc.getStats();
+        for (const stat of stats.values()) {
+            if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+                if (stat.qualityLimitationReason === 'cpu') {
+                    console.log(`[probe] CPU limit detected for ${id.slice(0,6)}`);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+async function snapshotFps(ids) {
+    const result = {};
+    for (const id of ids) {
+        const pc = peerConnection[id];
+        if (!pc || pc.connectionState === 'closed') {
+            result[id] = null;
+            continue;
+        }
+        const stats = await pc.getStats();
+        let fps = null;
+        for (const stat of stats.values()) {
+            if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+                fps = stat.framesPerSecond !== undefined ? Math.round(stat.framesPerSecond) : null;
+                break;
+            }
+        }
+        result[id] = fps;
+    }
+    console.log('[snapshotFps]', JSON.stringify(result, null, 2));
+    return result;
+}
+     const TEST_DURATION_MS = 5000;
+       const INTERVAL_MS = 1000;
+       let probeStartTime = 0;
+async function admitWithProbe(id, viewerCount) {
+   
+    
+    if (isProbing ) {
+        probingQueue.push({ id, viewerCount });
+        const position = probingQueue.length; 
+        
+        const elapsed = Date.now() - probeStartTime;
+        const remaining = Math.max(0, TEST_DURATION_MS - elapsed);
+        
+        const waitMs = remaining + position * TEST_DURATION_MS;
+        
+        channel.postMessage({ type: 'checking', id, roomId, seconds: Math.ceil(waitMs / 1000) });
+
+       
+        return;
+    }
+    
+
+    isProbing = true;
+    currentProbeId = id; 
+    probeStartTime = Date.now(); 
+    channel.postMessage({ type: 'checking', id, roomId, seconds: TEST_DURATION_MS / 1000 });
+    try {
+        const existingIds = Object.keys(peerConnection);
+        if (await hasCpuQualityLimit(existingIds)) {
+            console.log(`[probe] ${id.slice(0,6)} отклонён: у существующих зрителей проблемы CPU`);
+            channel.postMessage({ type: 'room-full', id, roomId, message: "технические характеристки" });
+            return;
+        }
+        
+      
+
+        await startStreaming(id, viewerCount);
+        const fpsHistory = {};
+   
+      
+        let badNews = 0;
+        let counts = 0;
+
+        await new Promise(resolve => {
+             probeResolve = resolve;
+            const timer = setInterval(async () => {
+
+                if (!peerConnection[id]) {
+                clearInterval(timer);
+                resolve();
+                return;
+            }
+
+                counts++;
+                const allIds = Object.keys(peerConnection);
+                const snap = await snapshotFps(allIds);
+
+                 for (const pid of allIds) {
+                    if (!fpsHistory[pid]) fpsHistory[pid] = [];
+                    fpsHistory[pid].push(snap[pid]);
+                }
+
+                let lowFpsCount = 0;
+                for (const pid of allIds) {
+                    if ( snap[pid] !== null && snap[pid] < MIN_FPS_MAJORITY) lowFpsCount++;
+                }
+                const majorityBad = allIds.length > 0 && lowFpsCount / allIds.length > 0.5;
+                const anyCritical = Object.values(snap).some(fps => fps !== null && fps <= MIN_FPS_ANY);
+                const hasCpuLimit = await hasCpuQualityLimit(allIds);
+
+                const bad = majorityBad || anyCritical || hasCpuLimit;
+                if (bad) badNews++;
+
+                if (counts * INTERVAL_MS >= TEST_DURATION_MS) {
+                    clearInterval(timer);
+                    resolve();
+                }
+            }, INTERVAL_MS);
+        });
+          probeResolve = null; 
+          if (probeCancelled) {
+            console.log(`[probe] ${id.slice(0,6)} — проба отменена (смена файла)`);
+            return;  
+        }
+        if (!peerConnection[id]) {
+            console.log(`[probe] ${id.slice(0,6)} отключился во время проверки`);
+            return; 
+        }
+        const violationRatio = badNews / counts;
+       const newViewerHistory = fpsHistory[id] || [];
+        const neverGotFps = newViewerHistory.every(fps => fps === null);
+        if (violationRatio > 0.5 || neverGotFps) {
+            if (peerConnection[id]) {
+                peerConnection[id].close();
+                delete peerConnection[id];  
+            }
+            if (neverGotFps) {
+                 channel.postMessage({ type: 'room-full', id, roomId, message: "VPN" });
+            }
+            else { channel.postMessage({ type: 'room-full', id, roomId, message: "технические характеристки" });}
+           
+            const msg = `⛔ ${id.slice(0,6)} отключён (FPS низкий или CPU limit)`;
+            console.log(`[probe] ${msg}`);
+        } else {
+            channel.postMessage({ type: 'probe-passed', id, roomId }); 
+            // viewers.textContent = Object.keys(peerConnection).length;  
+            console.log(`[probe] ✅ ${id.slice(0,6)} принят`);
+             }
+    } catch (err) {
+        if (peerConnection[id]) {
+            peerConnection[id].close();
+            delete peerConnection[id];
+        }
+        channel.postMessage({ type: 'room-full', id, roomId, message: "технические характеристки" });
+    } finally {
+        probeCancelled = false; 
+         currentProbeId = null;  
+        probeResolve = null;    
+        isProbing = false;
+        if (probingQueue.length) {
+            const next = probingQueue.shift();
+            admitWithProbe(next.id, next.viewerCount);
+        }
+    }
+}
+
+
+
+    async function startStreaming(id, viewerCount = null) {
+        const config = {
+            iceServers: [
+               { urls: "stun:YOUR_SERVER_IP:3478" },
+{ urls: "turn:YOUR_SERVER_IP:3478", username: "YOUR_USER", credential: "YOUR_PASSWORD" }
+            ],
+            iceTransportPolicy: "all",
+            bundlePolicy:       "max-bundle",
+            rtcpMuxPolicy:      "require",
+            sdpSemantics:       "unified-plan"
+        };
+
+        const pc = new RTCPeerConnection(config);
+        peerConnection[id] = pc;
+
+        pc.addEventListener('connectionstatechange', async () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        pc.close();
+        delete peerConnection[id];
+         removeFromProbingQueue(id);
+      await applyQualityToAll(Object.keys(peerConnection).length);
+       
+           channel.postMessage({ type: "force-leave", id, roomId});
+    }
+});
+
+        pc.addEventListener("icecandidate", e => {
+            if (e.candidate) {
+                channel.postMessage({
+                    type:      "icecandidate",
+                    candidate: e.candidate.toJSON(),
+                    id
+                });
+            }
+        });
+
+         sharedstream?.getTracks().forEach(track => {
+        const sender = pc.addTrack(track, sharedstream);
+
+   
+        if (sender.track?.kind === 'video') {
+            const params = sender.getParameters();
+            if (!params.encodings?.length) params.encodings = [{}];
+            const { maxBitrate, maxFramerate, scaleDown } = getQualityParams(viewerCount ?? 1);
+            params.encodings[0].maxBitrate = maxBitrate;
+            params.encodings[0].maxFramerate = maxFramerate;
+            params.encodings[0].scaleResolutionDownBy = scaleDown;
+            sender.setParameters(params).catch(() => {});
+        }
+    });
+       await applyQualityToAll(Object.keys(peerConnection).length);
+
+   
+        const offer = await pc.createOffer();
+       
+ 
+         const sdp = offer.sdp
+        await pc.setLocalDescription({ type: offer.type, sdp });
+        console.log(`[${id}] Offer создан, H264 форсирован, отправляем...`);
+        
+       
+        channel.postMessage({ type: 'offer', sdp, id });
+    }
+
+
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const adminMuteBtn = document.getElementById('adminMuteBtn');
+    const adminFsBtn   = document.getElementById('adminFsBtn');
+    const ctrlTime     = document.getElementById('ctrlTime');
+    const progressFill = document.getElementById('progressFill');
+    const progressThumb= document.getElementById('progressThumb');
+    const progressBar  = document.getElementById('progressBar');
+
+    function formatTime(sec) {
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = Math.floor(sec % 60);
+
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+    player.addEventListener('timeupdate', () => {
+        if (!player.duration) return;
+        const pct = (player.currentTime / player.duration) * 100;
+        progressFill.style.width  = pct + '%';
+        progressThumb.style.left  = pct + '%';
+        ctrlTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
+    });
+
+    progressBar.addEventListener('click', (e) => {
+        if (!player.duration) return;
+        const rect = progressBar.getBoundingClientRect();
+        const pct  = (e.clientX - rect.left) / rect.width;
+        player.currentTime = pct * player.duration;
+    });
+
+    let isDragging = false;
+    progressBar.addEventListener('mousedown', () => { isDragging = true; });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging || !player.duration) return;
+        const rect = progressBar.getBoundingClientRect();
+        const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        player.currentTime = pct * player.duration;
+    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+
+     playPauseBtn.addEventListener('click', () => {
+        player.paused ? player.play() : player.pause();
+    });
+
+    player.addEventListener('pause', () => { playPauseBtn.textContent = '▶'; });
+    player.addEventListener('play',  () => { playPauseBtn.textContent = '⏸'; });
+
+    adminMuteBtn.addEventListener('click', () => {
+        player.muted = !player.muted;
+        adminMuteBtn.textContent = player.muted ? '🔇' : '🔊';
+    });
+
+    document.addEventListener("click", (e)=>{
+        if (e.target === document.getElementById('player')) {
+            player.paused ? player.play() : player.pause();
+        }
+    })
+
+ adminFsBtn.addEventListener('click', () => {
+    const container = document.querySelector('.player-wrap');
+    const isFullscreen = !!(document.fullscreenElement);
+    if (isFullscreen) {
+        document.exitFullscreen();
+        if (screen.orientation?.unlock) {
+            try { screen.orientation.unlock(); } catch(_) {}
+        }
+    } else {
+        container.requestFullscreen?.().then(() => {
+           
+            if (window.matchMedia('(pointer: coarse)').matches) {
+                screen.orientation?.lock?.('landscape')
+                    .catch(err => console.warn('lock failed', err));
+            }
+        }).catch(err => console.warn('Fullscreen error:', err));
+    }
+});
+
+    let adminToastTimer = null;
+
+    function showAdminToast(name, text) {
+        const toast = document.getElementById('adminToast');
+        const container = document.querySelector('.player-wrap');
+        if (document.fullscreenElement!==container) return;
+        document.getElementById('adminToastName').textContent = name;
+        document.getElementById('adminToastText').textContent = text;
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        clearTimeout(adminToastTimer);
+        adminToastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+const adminToast = document.getElementById('adminToast');
+adminToast.addEventListener('click', (e) => {
+  e.stopPropagation();
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+        adminToast.classList.remove('show')
+    }
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isMobile) {
+        const chatBtn = document.getElementById('chatToggleBtn');
+        if (chatBtn && !chatPanel.classList.contains('open')) {
+            chatBtn.click();
+        }
+    }
+});
+  
+
+
+</script>
+</body>
+</html>

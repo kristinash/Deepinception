@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepInception</title>
+    <link rel="stylesheet" href="./styles_client.css">
+</head>
+<body>
+<header>
+    <div class="logo">Deep<span>Inception</span></div>
+    <div class="header-right">
+        <div class="room-badge">Комната <span id="roomLabel"></span></div>
+        <button id="logoutBtn" class="logout-btn" title="Выйти из аккаунта">Выход</button>
+    </div>
+</header>
+
+<div class="waiting-overlay" id="namePickerOverlay" style="display:none">
+    <div class="waiting-icon">⬡</div>
+    <div class="waiting-title">Как вас называть?</div>
+    <div class="modal-window ">
+        <input type="text" id="namePickerInput" class="chat-input"
+               placeholder="Введите имя" maxlength="32"
+               style="flex:1;font-size:15px">
+        <button class="room-btn" id="namePickerRandom" 
+                style="padding:8px 10px;font-size:18px" 
+                title="Случайное имя">🎲</button>
+    </div>
+    <div id="namePickerError" 
+         style="color:#e05c5c;font-size:13px;min-height:18px;margin-top:6px"></div>
+    <button class="room-btn" id="namePickerBtn" 
+            style="margin-top:12px">Войти →</button>
+</div>
+
+<main>
+    <div class="left-col">
+        
+         <div class="room-badge-mobile">Комната: <span id="roomLabelMobile"></span></div>
+        <div class="video-wrap">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+            <div class="screen-border">
+                <div class="waiting-overlay" id="waitingOverlay">
+                      <button class="minimize-overlay-btn" id="minimizeAdminLeft2" title="Свернуть">✕</button>
+                    <div class="waiting-icon">⬡</div>
+                    <div class="waiting-title">Ожидание трансляции</div>
+                    <div class="waiting-sub">Сеанс начнётся автоматически</div>
+                </div> 
+                <div class="waiting-overlay" id="adminLeftOverlay" style="display:none">
+                     <button class="minimize-overlay-btn" id="minimizeAdminLeft" title="Свернуть">✕</button>
+                    <div class="waiting-icon">⬢</div>
+                    <div class="waiting-title">Не перезагружайте страницу!</div>
+                    <div class="waiting-title">Админ покинул комнату: дождитесь его или перейдите в другую комнату</div>
+                    <div class="waiting-title">Если админ не вернется через 5 минут, вы будете перенаправлены в лобби</div>
+                    <button class="room-btn" onclick="window.location.href='startpage.html'">Другая комната →</button>
+                </div>
+                <div class="waiting-overlay" id="go_lobby" style="display:none">
+                    <div class="waiting-icon">⬢</div>
+                    <div class="waiting-title">Перенаправление в лобби...</div>
+                </div>
+                <div class="waiting-overlay" id="checkingOverlay" style="display:none">
+                    <div class="waiting-icon">⬡</div>
+                    <div class="waiting-title"  id="checkingTitle"></div>
+                    <div class="probe-spinner"></div>
+                </div>
+
+                <div class="waiting-overlay" id="probeErrorOverlay" style="display:none">
+                    <div class="waiting-icon">⚠</div>
+                    <div class="waiting-title" id="probeErrorTitle">Не удалось подключиться</div>
+                    <div class="waiting-sub" id="probeErrorSub"></div>
+                    <button class="room-btn" onclick="window.location.href='startpage.html'">← В лобби</button>
+                </div>
+                <video id="rem"  autoplay muted></video> 
+                <div class="custom-video-controls">
+                    <button id="toggleSoundBtn" class="ctrl-btn" title="Звук">🔇</button>
+                    <button id="fullscreenBtn" class="ctrl-btn" title="На весь экран">⛶</button>
+                </div>   
+                 <div class="fs-toast" id="fsToast">
+                    <span class="fs-toast-name" id="fsToastName"></span>
+                    <span class="fs-toast-text" id="fsToastText"></span>
+                </div>      
+            </div>  
+        </div> 
+        <button class="chat-toggle-btn" id="chatToggleBtn">⬡ Чат</button>
+        <div class="info-bar">
+            <div class="info-status">
+                <div class="status-dot connecting" id="statusDot2"></div>
+                Статус: <b id="statusText2">Ожидание выбора файла</b>
+            </div>
+            <div class="info-quote">"Хорошее кино стоит ожидания"</div>
+        </div>
+    </div>
+  
+   <div class="waiting-overlay" id="playBlockedOverlay" style="display:none">
+        <div class="waiting-icon">▶</div>
+        <div class="waiting-title">Нажмите чтобы начать просмотр</div>
+        <button class="room-btn" id="manualPlayBtn">▶ Смотреть</button>
+    </div>
+    
+    
+    <div class="chat-panel">
+        <div class="chat-header">⬡ Чат комнаты</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-wrap">
+             <div class="emoji-panel" id="emojiPanel">
+                <div class="emoji-tabs" id="emojiTabs"></div>
+                <div class="emoji-grid" id="emojiGrid"></div>
+            </div>
+            <button class="emoji-toggle-btn" id="emojiToggleBtn">☺</button>
+            <input class="chat-input" id="chatInput" placeholder="Сообщение">
+            <button class="chat-send" id="chatSendBtn">Отправить</button>
+        </div>
+    </div>
+</main>
+
+<div class="ticker">
+    <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+
+
+<script src="./mysignalserverclass.js"></script>
+<script>
+ 
+      
+    
+    const _p    = new URLSearchParams(location.search);
+
+const _room = decodeURIComponent(_p.get('room')) 
+const rawName = _p.get('name');
+const _name = rawName === null ? null : decodeURIComponent(rawName);
+const rawPass = _p.get('pass');
+const _pass = rawPass === null ? null : decodeURIComponent(rawPass);
+
+const _colors  = ["Красный","Синий","Зелёный","Жёлтый","Фиолетовый","Оранжевый","Розовый","Чёрный","Белый","Серый","Коричневый","Голубой"];
+const _animals = ["Лис","Волк","Медведь","Заяц","Кот","Пёс","Тигр","Лев","Слон","Жираф","Панда","Енот","Страус","Динозавр","Орёл","Дельфин"];
+const _random  = _colors[Math.floor(Math.random()*_colors.length)] + ' ' + _animals[Math.floor(Math.random()*_animals.length)];
+function genRandom() {
+    return _colors[Math.floor(Math.random()*_colors.length)] + ' ' + _animals[Math.floor(Math.random()*_animals.length)];
+}
+const roomId   = _room;
+
+
+const password = _pass;
+let name    = _name ?? null;
+let channel = null;
+
+function initChannel() {
+    channel = new SignalServer(roomId, "viewer", null, null,
+                               password, null, null, name);
+    channel.onmessage = handleMessage;
+
+     channel.onclose = () => {
+       
+        if (document.getElementById('probeErrorOverlay').style.display !== 'none') return;
+        setChatVisible(false);
+        document.getElementById('probeErrorTitle').innerHTML =
+            'Соединение потеряно.<br>Через 7 сек вы будете перенаправлены в лобби';
+        document.getElementById('probeErrorOverlay').style.display = 'flex';
+        document.getElementById('statusDot2').className = 'status-dot';
+        document.getElementById('statusText2').textContent = 'Нет соединения';
+        setTimeout(() => window.location.replace('startpage.html'), 7000);
+    };
+
+    channel.onerror = () => {
+        window.location.href = 'startpage.html';
+    };
+}
+
+
+if (name) {
+    initChannel();
+} else {
+    const overlay  = document.getElementById('namePickerOverlay');
+    const input    = document.getElementById('namePickerInput');
+    const errEl    = document.getElementById('namePickerError');
+    const btnRnd   = document.getElementById('namePickerRandom');
+    const btnGo    = document.getElementById('namePickerBtn');
+
+    document.getElementById('waitingOverlay').style.display = 'none';
+    overlay.style.display = 'flex';
+
+    input.value = genRandom();
+
+    btnRnd.addEventListener('click', () => {
+        input.value = genRandom();
+        errEl.textContent = '';
+    });
+
+    function tryConnect() {
+        const val = input.value.trim();
+        if (!val) { errEl.textContent = 'Введите имя'; return; }
+        errEl.textContent = '';
+        name = val;
+       
+        initChannel();
+    }
+
+    btnGo.addEventListener('click', tryConnect);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') tryConnect();
+    });
+}
+
+    let fsToastTimer = null;
+
+    function setChatVisible(visible) {
+    document.querySelector('.chat-panel').style.display = visible ? '' : 'none';
+    document.getElementById('chatToggleBtn').style.display = visible ? '' : 'none';
+}
+
+    
+function showFsToast(name, text) {
+    const container = document.querySelector('.screen-border');
+    if (document.fullscreenElement !== container) return;
+
+    const toast = document.getElementById('fsToast');
+    document.getElementById('fsToastName').textContent = name;
+    document.getElementById('fsToastText').textContent = text;
+
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    clearTimeout(fsToastTimer);
+    fsToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 4000);
+}
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+   
+    window.location.href = 'startpage.html';
+    });
+    const emojiCategories = [
+        { icon: "😊", emojis: ["😀","😂","😍","😎","😢","😡","🥳","🤔","😴","🤩","😏","🥺","😤","🤗","😬","🤪","😇","🥰","😈","👻","💀","🤡","👾","🤖"] },
+        { icon: "👍", emojis: ["👍","👎","👏","🙌","🤝","✌️","🤞","👌","🤙","💪","🙏","👋","🤜","🫶","☝️","🤟","🤘","🫵","👈","👉","🫂","🤲"] },
+        { icon: "❤️", emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💕","💞","💓","💗","💖","💘","💝","💔","❣️","💟","💋","😘","🥰"] },
+        { icon: "🎉", emojis: ["🎉","🎊","🎈","🎁","🏆","🥇","🎖️","🎗️","🎀","🎆","🎇","✨","🌟","⭐","🔥","💥","🎯","🎮","🎲","🃏","🎰"] },
+        { icon: "🍕", emojis: ["🍕","🍔","🍟","🌭","🍿","🥚","🍳","🧇","🥞","🍞","🥐","🧀","🌮","🌯","🍜","🍱","🍣","🍦","🍰","☕","🧋"] },
+    ];
+
+    let activeCat = 0;
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    const chatPanel = document.querySelector('.chat-panel');
+
+  
+    const fsToast = document.getElementById('fsToast');
+    fsToast.addEventListener('click', (e) => {
+          e.stopPropagation();
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+            fsToast.classList.remove('show')
+        }
+         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isMobile) {
+             const chatBtn = document.getElementById('chatToggleBtn');
+             if (chatBtn && !chatPanel.classList.contains('open')) {
+                chatToggleBtn.click();
+            }
+        }
+    });
+
+    
+
+     document.getElementById('minimizeAdminLeft').addEventListener('click', () => {
+        if (document.fullscreenElement) {
+             document.exitFullscreen();
+     document.getElementById('minimizeAdminLeft').style.display = 'none'
+        }
+    
+});
+
+     document.getElementById('minimizeAdminLeft2').addEventListener('click', () => {
+        if (document.fullscreenElement) {
+             document.exitFullscreen();
+     document.getElementById('minimizeAdminLeft2').style.display = 'none'
+        }
+    
+});
+
+
+    
+    let isChatOpen = false;
+    chatToggleBtn.addEventListener('click', () => {
+    chatPanel.classList.toggle('open');
+    isChatOpen = chatPanel.classList.contains('open');
+    chatToggleBtn.classList.toggle('active', isChatOpen);
+    chatToggleBtn.textContent = isChatOpen ? '✕ Закрыть' : '⬡ Чат';
+    if (isChatOpen) {
+        chatToggleBtn.classList.remove('new-message');
+    }
+});
+    document.querySelector('main').addEventListener('click', (e) => {
+        if (!isChatOpen) return;
+        if (!chatPanel.contains(e.target) && !chatToggleBtn.contains(e.target)) {
+           chatPanel.classList.toggle('open');
+            isChatOpen = false;
+            chatToggleBtn.classList.remove('active', 'new-message');
+            chatToggleBtn.textContent = '⬡ Чат';
+        }
+    })
+     function renderEmojiTabs() {
+        const tabs = document.getElementById('emojiTabs');
+        tabs.innerHTML = "";
+        emojiCategories.forEach((cat, i) => {
+            const btn = document.createElement('button');
+            btn.textContent = cat.icon;
+            btn.className = 'emoji-tab' + (i === activeCat ? ' active' : '');
+          
+            btn.onclick = () => {
+               
+                activeCat = i;
+                document.querySelectorAll('.emoji-tab').forEach(b=>b.classList.remove('active'));
+                 btn.classList.add('active');
+                renderEmojiGrid();
+            };
+            tabs.appendChild(btn);
+        });
+    }
+    
+ 
+    function renderEmojiGrid() { 
+        const grid = document.getElementById("emojiGrid");
+        grid.innerHTML = '';
+        emojiCategories[activeCat].emojis.forEach(em => {
+            const btn = document.createElement('button');
+            btn.className = 'emoji-btn';
+            btn.textContent = em;
+            btn.onclick = () => {
+                const input = document.getElementById('chatInput');
+                const pos = input.selectionStart;
+                input.value = input.value.slice(0, pos) + em + input.value.slice(pos);
+                const newpos = pos + em.length;
+                input.focus();
+                input.setSelectionRange(newpos, newpos);
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    document.getElementById("emojiToggleBtn").onclick = () => {
+        const emojiPanel = document.getElementById('emojiPanel');
+        emojiPanel.classList.toggle("open");
+    };
+    
+    document.addEventListener('click', (e) => {
+        const panel = document.getElementById('emojiPanel');
+        const emojiToggleBtn = document.getElementById('emojiToggleBtn');
+        const isOnEmojiTab = e.target.classList.contains('emoji-tab');
+        if (!panel.contains(e.target) && !emojiToggleBtn.contains(e.target) && !isOnEmojiTab) {
+            panel.classList.remove('open');
+            }
+        });
+
+    renderEmojiTabs();
+    renderEmojiGrid();
+
+
+     const video = document.getElementById('rem');
+    const toggleSoundBtn = document.getElementById('toggleSoundBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+fullscreenBtn.addEventListener('click', () => {
+    const container = document.querySelector('.screen-border');
+    const isFullscreen = !!(document.fullscreenElement);
+    if (isFullscreen) {
+        document.exitFullscreen();
+        
+        if (screen.orientation?.unlock) {
+            try { screen.orientation.unlock(); } catch(_) {}
+        }
+    } else {
+        container.requestFullscreen?.().then(() => {
+           
+            if (window.matchMedia('(pointer: coarse)').matches) {
+                screen.orientation?.lock?.('landscape')
+                    .catch(err => console.warn('lock failed', err));
+            }
+        }).catch(err => console.warn('Fullscreen error:', err));
+    }
+});
+    toggleSoundBtn.addEventListener('click', () => {
+        video.muted = !video.muted;
+        toggleSoundBtn.textContent = video.muted ? '🔇' : '🔊';
+    });
+
+
+    
+    const rem = document.getElementById("rem");
+    const words = [
+        "I am your father",
+        "The first rule of Fight Club is: you do not talk about Fight Club",
+        "I'll be back",
+        "Bond. James Bond",
+        "I'm going to make him an offer he can't refuse",
+        "May the Force be with you",
+        "Houston, we have a problem",
+        "We buy things we don't need, to impress people we don't like"
+    ];
+    
+    document.getElementById("tickerTrack").innerHTML = [...words, ...words].map(q => `<span class="ticker-item"><span>⬡</span>${q}</span>`).join('');
+    
+    rem.addEventListener("playing", () => {
+         if (document.getElementById('checkingOverlay').style.display !== 'none') return;
+    document.getElementById("waitingOverlay").classList.add('hidden');
+    document.getElementById("playBlockedOverlay").style.display = 'none';
+    document.getElementById('statusDot2').className = 'status-dot live';
+    document.getElementById('statusText2').textContent = 'В эфире';
+});
+    function nameToColor(name) {
+if (name === 'Админ') return '#f5c842';
+    const colors = [
+        '#e05c5c', '#e07a5c', '#e0b55c', '#8dbd4e',
+        '#4eb87a', '#4eb8b8', '#4e82e0', '#8a4ee0',
+        '#c44ee0', '#e04ea8', '#5ca8e0', '#a0c44e'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + hash * 31;
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+    function addMessage(name, text) {
+        const messages = document.getElementById('chatMessages');
+        const msg = document.createElement('div');
+        msg.className = 'chat-msg';
+         const color = nameToColor(name);
+        msg.innerHTML = `<div class='chat-msg-name'  style="color:${color}">${name}</div>
+                         <div class='chat-msg-text'>${text}</div>`;
+        messages.append(msg);
+        messages.scrollTop = messages.scrollHeight;
+    }
+    
+  
+   
+    
+    document.getElementById('chatSendBtn').addEventListener('click', () => {
+        const message = document.getElementById('chatInput').value;
+        if (message) {
+            channel.postMessage({ type: "post-message", name, message, roomId });
+            document.getElementById('chatInput').value = '';
+        }
+    });
+    
+    document.getElementById('chatInput').addEventListener('keydown', e => {
+        const message = document.getElementById('chatInput').value;
+        if (message && e.key === 'Enter') {
+            channel.postMessage({ type: "post-message", name: name, message, roomId });
+            document.getElementById('chatInput').value = '';
+        }
+    });
+    
+    const peerConnection = {};
+    document.getElementById("roomLabel").textContent = roomId || '-';
+    document.getElementById("roomLabelMobile").textContent = roomId || '-';
+    console.log("комната" + roomId);
+
+     
+
+    let pendingCandidates = {};
+    
+    async function handleMessage(e) {
+        const id = e.data.id;
+        console.log('message received:', e.data.type);
+        
+        if (e.data.type === "icecandidate") {
+            if (peerConnection[id] && peerConnection[id].remoteDescription) {
+                peerConnection[id].addIceCandidate(e.data.candidate);
+            } else {
+                if (!pendingCandidates[id]) pendingCandidates[id] = [];
+                pendingCandidates[id].push(e.data.candidate);
+            }
+        } else if (e.data.type === "offer") {
+            console.log("received offer");
+            handleOffer(e.data);
+        } else if (e.data.type === "admin_again_here") {
+           document.getElementById('waitingOverlay').classList.remove('hidden');
+            document.getElementById('adminLeftOverlay').style.display = 'none';
+            document.getElementById('statusText2').textContent = 'Ожидание выбора файла'; 
+             if (document.fullscreenElement) {
+        document.getElementById('minimizeAdminLeft2').style.display = 'flex';
+    }   
+        } else if (e.data.type === "error-leave-admin") {
+            document.getElementById('probeErrorOverlay').style.display = 'none';
+               document.getElementById('checkingOverlay').style.display = 'none';
+            document.getElementById('statusDot2').className = 'status-dot connecting';
+            document.getElementById('statusText2').textContent = 'Ожидание админа';
+            document.getElementById('adminLeftOverlay').style.display = 'flex';  
+             if (document.fullscreenElement) {
+        document.getElementById('minimizeAdminLeft').style.display = 'flex';
+    }   
+        } 
+
+else if (e.data.type === "chat-history") {
+            e.data.messages.forEach(msg => addMessage(msg.name, msg.text));
+        } else if (e.data.type === "pause") {
+            document.getElementById('statusDot2').className = 'status-dot connecting';
+            document.getElementById('statusText2').textContent = 'Пауза';
+        } else if (e.data.type === "play") {
+            document.getElementById('statusDot2').className = 'status-dot live';
+            document.getElementById('statusText2').textContent = 'В эфире';
+        } else if (e.data.type === "receive-message") {
+            addMessage(e.data.name, e.data.message);
+            showFsToast(e.data.name, e.data.message);
+             if (!isChatOpen) {
+            chatToggleBtn.classList.add('new-message');}
+
+       } else if (e.data.type === "checking") {
+    let sec = e.data.seconds ;
+    document.getElementById('checkingTitle').textContent = `Подключение через ${sec} сек...`;
+    document.getElementById('waitingOverlay').classList.add('hidden');
+    document.getElementById('checkingOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot connecting';
+
+     document.getElementById('statusText2').textContent = `Проверка подключения ...`;
+
+    clearInterval(window._countdownTimer);
+    window._countdownTimer = setInterval(() => {
+        sec--;
+        if (sec <= 0) {
+            clearInterval(window._countdownTimer);
+        } else {
+            document.getElementById('checkingTitle').textContent = `Подключение через ${sec} сек...`;
+             document.getElementById('statusText2').textContent = `Проверка подключения ...`;
+        }
+    }, 1000);
+}               
+  else if (e.data.type === "probe-passed") {
+    
+    document.getElementById('checkingOverlay').style.display = 'none';
+    document.getElementById('waitingOverlay').classList.add('hidden');
+    document.getElementById('playBlockedOverlay').style.display = 'none';
+    document.getElementById('statusDot2').className = 'status-dot live';
+    document.getElementById('statusText2').textContent = 'В эфире';
+    
+    if (rem.paused) {
+        rem.play().catch(err => {
+            if (err.name === 'NotAllowedError') {
+                document.getElementById('playBlockedOverlay').style.display = 'flex';
+                document.getElementById('statusDot2').className = 'status-dot connecting';
+                document.getElementById('statusText2').textContent = 'Нажмите для просмотра';
+            }
+        });
+    }
+    
+}
+else if (e.data.type === "name-ok") { 
+    const url = new URL(window.location.href);
+    url.searchParams.set('name', e.data.name );
+    window.history.pushState({}, '', url);
+    document.getElementById('waitingOverlay').style.display = 'flex';
+    document.getElementById('namePickerOverlay').style.display = 'none';
+
+}
+
+else if (e.data.type === "error-duplicate-name") {
+        
+        channel = null;
+document.getElementById('waitingOverlay').style.display = 'none';
+    document.getElementById('namePickerOverlay').style.display = 'flex';
+
+        const overlay = document.getElementById('namePickerOverlay');
+        const errEl   = document.getElementById('namePickerError');
+        const input   = document.getElementById('namePickerInput');
+
+
+        errEl.textContent = '❌ Ваше имя уже занято в комнате. Попробуйте другое';
+        input.value = genRandom();   
+
+        const btnGo  = document.getElementById('namePickerBtn');
+        const btnRnd = document.getElementById('namePickerRandom');
+        btnRnd.onclick = () => { input.value = genRandom(); errEl.textContent=''; };
+
+        if (rawName)
+        {
+            function tryConnect() {
+                        const val = input.value.trim();
+                        if (!val) { errEl.textContent = 'Введите имя'; return; }
+                        errEl.textContent = '';
+                        name = val;
+                   
+                        initChannel();
+                    }
+                    btnGo.onclick = tryConnect;
+                    input.onkeydown = e => { if (e.key === 'Enter') tryConnect(); };
+        }
+        
+    }
+  
+ else if (e.data.type === "error-wrong-password") {
+        document.getElementById('namePickerOverlay').style.display = 'none';
+    setChatVisible(false);
+    document.getElementById('probeErrorTitle').innerHTML = 'Неверный пароль. Проверьте ссылку или обратитесь к администратору. <br>Через 7 сек вы будете перенаправлены в лобби';
+
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Отказано в подключении';
+    setTimeout(() => window.location.replace('startpage.html'), 7000);
+}
+
+ else if (e.data.type === "force-leave") {
+     if (window._countdownTimer) {
+        clearInterval(window._countdownTimer);
+        window._countdownTimer = null;
+    }
+     if (peerConnection[e.data.id]) {
+        peerConnection[e.data.id].close();
+        delete peerConnection[e.data.id];
+    }
+    setChatVisible(false);
+    document.getElementById('checkingOverlay').style.display = 'none';
+    document.getElementById('probeErrorTitle').innerHTML = 'Вы были исключены из канала.<br>Через 7 сек вы будете перенаправлены в лобби';
+
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Исключён';
+    setTimeout(() => window.location.replace('startpage.html'), 7000);
+}
+ else if (e.data.type === "error-admin-yet-not-here") {
+       document.getElementById('namePickerOverlay').style.display = 'none';
+    setChatVisible(false);
+    document.getElementById('probeErrorTitle').innerHTML = 'Админ вышел из комнаты. Вы не можете войти, пока он не вернется.<br>Через 7 сек вы будете перенаправлены в лобби';
+
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Отказано в подключении';
+    setTimeout(() => window.location.replace('startpage.html'), 7000);
+}
+
+
+    else if (e.data.type === "room-full") {
+           document.getElementById('namePickerOverlay').style.display = 'none';
+    setChatVisible(false);
+    document.getElementById('checkingOverlay').style.display = 'none';
+    const msg = e.data.message;
+   let errorMessage = '';
+if (msg === 'лимит комнаты') {
+    errorMessage = 'Комната заполнена. Превышен лимит зрителей.<br>Через 7 сек вы будете перенаправлены в лобби';
+} else if (msg === 'VPN') {
+    errorMessage = 'Если вы используете VPN, отключите его и попробуйте позже.<br>Через 7 сек вы будете перенаправлены в лобби';
+} else {
+    errorMessage = 'У админа недостаточно ресурсов для подключения. Попробуйте позже.<br>Через 7 сек вы будете перенаправлены в лобби';
+}
+document.getElementById('probeErrorTitle').innerHTML = errorMessage;
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Отказано в подключении';
+    setTimeout(() => window.location.replace('startpage.html'), 7000); 
+}
+
+
+ else if (e.data.type === "error-no-admin") {
+              document.getElementById('namePickerOverlay').style.display = 'none';
+   
+             setChatVisible(false);
+    document.getElementById('probeErrorTitle').innerHTML = 'Такой комнаты не существует. <br>Через 7 сек вы будете перенаправлены в лобби';
+
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Отказано в подключении';
+    setTimeout(() => window.location.replace('startpage.html'), 7000);
+        } else if (e.data.type === "admin-left-always") {
+            document.getElementById('checkingOverlay').style.display = 'none';
+
+             setChatVisible(false);
+    document.getElementById('probeErrorTitle').textContent = 'Время на возвращение админа истекло';
+
+    document.getElementById('probeErrorOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot';
+    document.getElementById('statusText2').textContent = 'Выход';
+    setTimeout(() => window.location.replace('startpage.html'), 7000);
+        } else if (e.data.type === 'videostate') {
+            const dot = document.getElementById("statusDot2");
+            const txt = document.getElementById("statusText2");
+            
+            if (e.data.state === 'pause') {
+                dot.className = 'status-dot connecting';
+                txt.textContent = "Пауза";
+            }
+            if (e.data.state === 'play') {
+                dot.className = 'status-dot live';
+                txt.textContent = "В эфире";
+            }
+            if (e.data.state === 'Ожидание выбора файла') {
+                dot.className = 'status-dot connecting';
+                txt.textContent = "Ожидание выбора файла";
+            }
+        }
+    };
+    
+
+
+    async function handleOffer(offer) {
+               const config = {
+    iceServers: [
+       { urls: "stun:YOUR_SERVER_IP:3478" },
+{ urls: "turn:YOUR_SERVER_IP:3478", username: "YOUR_USER", credential: "YOUR_PASSWORD" }
+    ],
+    iceTransportPolicy: "all",
+    bundlePolicy: "max-bundle",      
+    rtcpMuxPolicy: "require",        
+    sdpSemantics: "unified-plan"
+};
+    
+        
+        const id = offer.id;
+        peerConnection[id] = new RTCPeerConnection(config);
+        
+        peerConnection[id].addEventListener("track", e => {
+            rem.srcObject = e.streams[0];
+
+});
+
+document.getElementById('manualPlayBtn').addEventListener('click', () => {
+    rem.play().then(() => {
+        document.getElementById('playBlockedOverlay').style.display = 'none';
+        document.getElementById('waitingOverlay').classList.add('hidden');
+    });
+        });
+         
+        
+        peerConnection[id].addEventListener("icecandidate", e => {
+            if (e.candidate) {
+                channel.postMessage({ 
+                    type: "icecandidate", 
+                    candidate: e.candidate.toJSON(),
+                    id
+                });
+            }  
+        });
+        
+        await peerConnection[id].setRemoteDescription(offer);
+        
+        (pendingCandidates[id] || []).forEach(cand => peerConnection[id].addIceCandidate(cand));
+        delete pendingCandidates[id];
+        
+        const answer = await peerConnection[id].createAnswer();
+        await peerConnection[id].setLocalDescription(answer);
+        console.log("Sending answer...");
+        channel.postMessage({...answer, id});  
+        
+        document.getElementById('checkingOverlay').style.display = 'flex';
+    document.getElementById('statusDot2').className = 'status-dot connecting';
+
+    }
+</script>
+</body>
+</html>

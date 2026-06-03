@@ -1,0 +1,703 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepInception</title>
+    <link rel="stylesheet" href="./lobby.css"> 
+</head>
+<body>
+
+<div id="newSecretModal" class="modal-overlay" onclick="handleModalClick(event)">
+    <div class="modal-container text-center">
+        <div class="modal-title">⬡ Комната создана</div>
+        <div class="modal-subtitle">
+            Сохраните кодовое слово — оно нужно, чтобы вернуться в комнату, если вы случайно закроете вкладку или захотите перейти на другое устройство
+        </div>
+        <div class="secret-display" id="newSecretDisplay" title="Нажмите чтобы скопировать" onclick="copySecret(this)" style="cursor: pointer;"></div>
+        <button class="modal-button" onclick="confirmAndGo()">
+            Сохранил, продолжить →
+        </button>
+    </div>
+</div>
+
+<header>
+    <div class="logo">Deep<span>Inception</span></div>
+    <div class="header-right">
+        <div class="viewers-badge">
+            <div class="dot"></div>
+            <span>Лучшие фильмы смотрят вместе</span>
+        </div>
+        <span class="viewers-count" id="viewers_count"></span>
+    </div>
+</header>
+
+<main>
+    <nav class="mobile-tab-bar">
+        <button id="tabRooms" class="active" onclick="switchTab('rooms', this)">
+            <span class="tab-icon">⬡</span>
+            <span class="tab-label">Комнаты</span>
+        </button>
+        <button id="tabCreate" onclick="switchTab('create', this)">
+            <span class="tab-icon">＋</span>
+            <span class="tab-label">Создать</span>
+        </button>
+        <button id="tabJoin" onclick="switchTab('join', this)">
+            <span class="tab-icon">→</span>
+            <span class="tab-label">Войти</span>
+        </button>
+    </nav>
+    <div class="rooms-panel">
+        <div class="panel-header">
+            <h1 class="panel-title">Активные<span> комнаты</span></h1>
+            <div class="rooms-count" id="roomsCount"></div>
+        </div>
+        <div class="filter-tabs">
+            <button class="tab active" onclick="filterRooms('all', this)">Все</button>
+            <button class="tab" onclick="filterRooms('public', this)">Публичные</button>
+            <button class="tab" onclick="filterRooms('private', this)">Приватные</button>
+        </div>
+        <div class="rooms-grid" id="roomsGrid"></div>
+    </div>
+
+    <div class="action-panel">
+        <div class="action-section" id="createSection">
+            <div class="section-label">Создать комнату</div>
+
+            <div class="field">
+                <label for="createId">ID комнаты</label>
+                <input type="text" id="createId" placeholder="напр. movie-night77" autocomplete="off">
+            </div>
+
+            <div class="field" id="codeField" style="display:none">
+                <label for="codeField">Кодовое слово</label>
+                <input type="text" id="code" placeholder="Слово, данное при регистрации">          
+            </div>
+
+            <div class="field" id="typeDesc">
+                <div class="field">
+                    <label>Тип комнаты</label>
+                    <div class="type-toggle">
+                        <button class="type-btn active public" onclick="setCreateType('public', this)">⬡ Публичная</button>
+                        <button class="type-btn private" onclick="setCreateType('private', this)">⬢ Приватная</button>
+                    </div>
+                </div>
+                
+                <div class="extra-fields public-style" id="createPublicFields">
+                    <div class="extra-label public-style">⬡ Публичная трансляция</div>
+                    <div class="field">
+                        <label for="createDesc">Описание/Название фильма</label>
+                        <input type="text" id="createDesc" placeholder="напр. Дюна (2021)" autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label for="createMaxViewers">Максимум зрителей</label>
+                        <input type="number" id="createMaxViewers" placeholder="∞" min="1" autocomplete="off">
+                    </div>
+                </div>
+           
+
+            <div class="extra-fields private-style" id="createPrivateFields" style="display:none">
+                <div class="extra-label private-style">⬢ Приватная трансляция</div>
+                <div class="field">
+                    <label for="createPass">Пароль</label>
+                    <div style="position:relative;">
+                        <input type="text" name="room-password" id="createPass" placeholder="•••••••" autocomplete="off" class="pass-hidden" style="padding-right:36px;">
+                        <button type="button" onclick="togglePass('createPass', this)" class="icon-btn">👁</button>
+                    </div>
+                </div>
+            </div>
+             </div>
+            <div id="roomError1" class="error-message" style="display: none;"></div>
+            <button class="btn-primary" onclick="createRoom()">Создать комнату</button>
+        </div>
+        
+        <div class="divider">или</div>
+
+        <div class="action-section" id="joinSection">
+            <div class="section-label">Войти в комнату</div>
+            <div class="field">
+                <label for="joinName">Ваше имя</label>
+                <div class="name-input-wrapper">
+                    <input type="text" id="joinName" placeholder="напр. Иван" autocomplete="off">
+                    <button type="button" id="randomNameBtn" class="random-name-btn" title="Сгенерировать случайное имя">🎲</button>
+                </div>
+                <label for="joinId">ID комнаты</label>
+                <input type="text" id="joinId" placeholder="Кликните или введите ID">
+            </div>
+            
+            <div class="extra-fields private-style" id="joinPrivateField" style="display:none">
+                <div class="extra-label private-style">⬢ Приватная трансляция</div>
+                <div class="field">
+                    <label for="joinPass">Пароль</label>
+                    <div style="position:relative;">
+                        <input type="text" name="join-password" id="joinPass" placeholder="•••••••" autocomplete="off" class="pass-hidden" style="padding-right:36px;">
+                        <button type="button" onclick="togglePass('joinPass', this)" class="icon-btn">👁</button>
+                    </div>
+                </div>
+            </div>
+            <div id="roomError2" class="error-message" style="display: none;"></div>
+            <button class="btn-secondary" id="joinBtn" onclick="joinRoom()">Войти</button>
+        </div>
+    </div>
+</main>
+
+<div class="ticker">
+    <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<script src="./mysignalserverclass.js"></script>
+<script>
+    let _pendingRoom = null;
+    const colors = [
+        "Красный", "Синий", "Зелёный", "Жёлтый", "Фиолетовый", "Оранжевый",
+        "Розовый", "Чёрный", "Белый", "Серый", "Коричневый", "Голубой"
+    ];
+    const animals = [
+        "Лис", "Волк", "Медведь", "Заяц", "Кот", "Пёс", "Тигр", "Лев",
+        "Слон", "Жираф", "Панда", "Енот", "Страус", "Динозавр", "Орёл", "Дельфин"
+    ];
+
+    function getRandomName() {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const animal = animals[Math.floor(Math.random() * animals.length)];
+        return `${color} ${animal}`;
+    }
+
+    document.getElementById('randomNameBtn').addEventListener('click', () => {
+        const nameInput = document.getElementById('joinName');
+        nameInput.value = getRandomName();
+        nameInput.classList.remove('error');
+        document.getElementById("roomError2").style.display = 'none';
+    });
+
+    
+
+   function switchTab(tab, btn) {
+    document.querySelectorAll('.mobile-tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    document.querySelector('.rooms-panel').classList.remove('active');
+    document.querySelector('.action-panel').classList.remove('active');
+
+    document.getElementById('createSection').classList.remove('active');
+    document.getElementById('joinSection').classList.remove('active');
+    
+    if (tab === 'rooms') {
+        document.querySelector('.rooms-panel').classList.add('active');
+    } else {
+        document.querySelector('.action-panel').classList.add('active');
+        
+        if (tab === 'create') {
+            document.getElementById('createSection').classList.add('active');
+            
+        } else if (tab === 'join') {
+            document.getElementById('joinSection').classList.add('active');
+           
+        }
+    }
+}
+    function initLayout() {
+        if (window.innerWidth <= 768) {
+            document.querySelector('.rooms-panel').classList.add('active');
+            document.querySelector('.action-panel').classList.remove('active');
+            document.getElementById('createSection').classList.remove('active');
+            document.getElementById('joinSection').classList.remove('active');
+            document.querySelectorAll('.mobile-tab-bar button').forEach(b => b.classList.remove('active'));
+            document.getElementById('tabRooms').classList.add('active');
+        } else {
+            document.querySelector('.rooms-panel').classList.remove('active');
+            document.querySelector('.action-panel').classList.remove('active');
+            document.getElementById('createSection').classList.remove('active');
+            document.getElementById('joinSection').classList.remove('active');
+        }
+    }
+
+    initLayout(); 
+
+    let lastWidth = window.innerWidth;
+    window.addEventListener('resize', () => {
+    const currentWidth = window.innerWidth;
+    if (currentWidth === lastWidth) return;
+    lastWidth = currentWidth;
+    initLayout();
+});
+        
+    function handleModalClick(e) {
+        if (e.target === document.getElementById("newSecretModal")) {
+            document.getElementById('newSecretModal').style.display = 'none';
+        }
+    }
+    
+    function togglePass(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const hidden = input.classList.toggle('pass-hidden');
+        btn.textContent = hidden ? '👁' : '🙈';
+    }
+    
+    async function copySecret(el) {
+         if (el.textContent!== 'Скопировано') {
+            const orig = el.textContent;
+            await navigator.clipboard.writeText(el.textContent);
+            el.textContent = 'Скопировано';
+            setTimeout(()=>el.textContent=orig, 1500)
+         }
+    }
+
+    
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const modal = document.getElementById('newSecretModal');
+            if (modal.style.display === 'flex') {
+                 e.preventDefault();
+                    e.stopPropagation();
+                    confirmAndGo();
+                   
+                    return;
+                }
+
+            const focused = document.activeElement;
+            const roomInput = document.getElementById('createDesc');
+            const streamInput = document.getElementById('createPass');
+            const crId = document.getElementById('createId');
+            
+            if (focused === roomInput || focused === streamInput || focused === crId) {
+                e.preventDefault();
+            e.stopPropagation();
+            createRoom();
+            return;
+            }
+            
+            const joinName = document.getElementById('joinName');
+            const joinId = document.getElementById('joinId');
+            const joinPass = document.getElementById('joinPass');
+            
+            if (focused === joinPass || focused === joinName || focused === joinId) {
+                 e.preventDefault();
+            e.stopPropagation();
+            joinRoom();
+            return;
+            }
+        }
+    });
+
+    let rooms = [];
+    let currentRoomSecret = ''; 
+    
+    
+    function confirmAndGo() {
+    document.getElementById('newSecretModal').style.display = 'none';
+    const createId = currentRoomSecret;
+
+    const params = new URLSearchParams();
+    params.set('roomId', _pendingRoom.id);
+    params.set('type', _pendingRoom.type);
+    if (_pendingRoom.desc)       params.set('desc', _pendingRoom.desc);
+    if (_pendingRoom.maxViewers) params.set('maxV', _pendingRoom.maxViewers);
+
+    
+    params.set('createId', createId);
+    if (_pendingRoom.password) params.set('pass', _pendingRoom.password);
+
+    window.location.href = `mystream.html?${params}`;
+}
+    
+    function showNewSecretModal(secret) {
+        currentRoomSecret = secret; 
+        document.getElementById('newSecretDisplay').textContent = secret;
+        document.getElementById('newSecretModal').style.display = 'flex';
+    }
+    
+    const listSocket = new WebSocket(`wss://${location.hostname}/`);
+    
+    listSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if (data.type === 'rooms-list') {
+            rooms = data.rooms || [];
+            renderRooms();
+            let countviewers = rooms.reduce((sum, room) => sum + room.viewers, 0);
+            document.getElementById("viewers_count").textContent = "Всего зрителей:" + countviewers;
+        }
+    };
+
+    listSocket.onopen = function() {
+        listSocket.send(JSON.stringify({ type: 'get-rooms' }));
+    };
+
+    let currentFilter = 'all';
+    let mytype = 'public';
+    let isRestoreMode = false;
+    
+    const words = [
+        "I am your father",
+        "The first rule of Fight Club is: you do not talk about Fight Club",
+        "I'll be back",
+        "Bond. James Bond",
+        "I'm going to make him an offer he can't refuse",
+        "May the Force be with you",
+        "Houston, we have a problem",
+        "We buy things we don't need, to impress people we don't like"
+    ];
+    
+    document.getElementById("tickerTrack").innerHTML = [...words, ...words].map(q => `<p class="ticker-item"><span>⬡</span>${q}</p>`).join('');
+    
+    function showError(myclass, message) {
+        const error = document.getElementById(myclass);
+        error.textContent = '❌ ' + message;
+        error.style.display = 'block';
+    }
+    
+    function renderRooms() {
+        const grid = document.getElementById("roomsGrid");
+        const filtered = currentFilter === 'all' ? rooms : rooms.filter(r => r.type === currentFilter);
+        const doc = document.getElementById("roomsCount");
+        
+        if (filtered.length === 1) {
+            doc.textContent = filtered.length + ' комната';
+        } else if (filtered.length === 2 || filtered.length === 3 || filtered.length === 4) {
+            doc.textContent = filtered.length + ' комнаты';
+        } else {
+            doc.textContent = filtered.length + ' комнат';
+        }
+        
+        if (!filtered.length) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⬡</div>
+                    <div class="empty-text">Нет активных комнат</div>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(room => `
+            <div class="room-card ${room.type} ${!room.adminOnline ? 'offline' : ''}" 
+                 onclick="${room.adminOnline ? `selectRoom('${room.id}', '${room.type}')` : ''}">
+                <div class="room-type-badge">${room.type === 'public' ? '⬡' : '⬢'}</div>
+                <div class="room-info">
+                    <div class="room-id">${room.id}</div>
+                    <div class="room-desc">${!room.adminOnline ? '⏳ Ожидание администратора...' : room.type === 'public' ? (room.desc) : '⬢ Приватная комната'}</div>
+                </div>
+                <div class="room-meta">
+                    <div class="viewers-count">${room.maxViewers
+                        ? `${room.viewers > 0 ? room.viewers : 0}/${room.maxViewers} онлайн`
+                        : `${room.viewers > 0 ? room.viewers : 0} онлайн`
+                    }</div>
+                    <div class="room-tag ${room.type}">${!room.adminOnline ? 'офлайн' : room.type === 'public' ? 'публичная' : 'приватная'}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function filterRooms(type, btn) {
+        currentFilter = type;
+        document.querySelectorAll('.tab').forEach(q => q.classList.remove('active'));
+        btn.classList.add('active');
+        renderRooms();
+    }
+    
+    function setCreateType(type, btn) {
+        document.getElementById("roomError1").style.display = 'none';
+        mytype = type;
+        document.querySelectorAll('.type-btn').forEach(d => d.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('createPublicFields').style.display = type === 'public' ? 'block' : 'none';
+        document.getElementById('createPrivateFields').style.display = type === 'private' ? 'block' : 'none';
+    }
+    
+    async function createRoom() {
+        const myinputId = document.getElementById('createId');
+        let id = myinputId.value.trim();
+        
+        if (!isRestoreMode) {
+            let Desc = '';
+            
+            if (!id) {
+                showError('roomError1', "Заполните ID!");
+                myinputId.classList.add('error');
+                return;
+            }
+            
+            if (mytype === 'public') {
+                const myinputDesc = document.getElementById('createDesc');
+                Desc = myinputDesc.value;
+                
+                if (Desc.length < 5) {
+                    showError('roomError1', "Описание фильма должно содержать минимум 5 символов!");
+                    myinputDesc.classList.add('error');
+                    return;
+                }
+                 const maxV = document.getElementById('createMaxViewers').value.trim();
+              
+            } else {
+                const pass = document.getElementById('createPass');
+                let pass_val = pass.value;
+                
+                if (pass_val.length < 4) {
+                    showError('roomError1', "Пароль должен содержать минимум 4 символа!");
+                    pass.classList.add('error');
+                    return;
+                }
+                
+            }
+            
+            const room = rooms.find(room => room.id === id);
+            
+            if (room && room.adminOnline) {
+                showError('roomError1', "Такая комната уже существует.");
+                return;
+            }
+            
+            let roomSecret;
+            
+            if (!room) {
+                roomSecret = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+            }
+            
+            
+            _pendingRoom = {
+                    id,
+                    type: mytype,
+                    desc: Desc,
+                    maxViewers: mytype === 'public' ? (document.getElementById('createMaxViewers').value.trim() || null) : null,
+                    password:   mytype === 'private' ? document.getElementById('createPass').value : null
+                };
+            
+            showNewSecretModal(roomSecret);
+        } else {
+            const codeInput = document.getElementById('code');
+            const secret = codeInput.value.trim();
+            
+            if (!secret) {
+                showError('roomError1', "Введите кодовое слово!");
+                codeInput.classList.add('error');
+                return;
+            }
+
+            listSocket.send(JSON.stringify({ 
+                type: 'restore-room', 
+                channel: id, 
+                secret: secret
+            }));
+            
+            const prevOnMessage = listSocket.onmessage;
+
+            listSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.type === 'rooms-list') {
+                    prevOnMessage(e);
+                    return;
+                }
+
+               
+                if (data.type === 'restore-success') {
+    const existingRoom = rooms.find(r => r.id === id);
+
+    const params = new URLSearchParams();
+    params.set('roomId', existingRoom.id);
+    params.set('type', existingRoom.type);
+    if (existingRoom.type === 'public' && existingRoom.desc)
+        params.set('desc', existingRoom.desc);
+
+
+    params.set('createId', secret);
+
+    window.location.href = `mystream.html?${params}`;
+}
+
+                if (data.type === 'restore-failed') {
+                    showError('roomError1', "Неправильное кодовое слово");
+                    document.getElementById('code').classList.add('error');
+                    listSocket.onmessage = prevOnMessage;
+                }
+            };
+        }
+    }
+    
+    async function joinRoom() {
+        const myinputId = document.getElementById('joinId');
+        let id = myinputId.value.trim();
+
+        const myName = document.getElementById('joinName');
+        let name = myName.value.trim();
+        
+        if (!name) {
+            showError('roomError2', "Заполните имя пользователя!");
+            myName.classList.add('error');
+            return;
+        }
+        
+        
+        if (!id) {
+            showError('roomError2', "Заполните ID!");
+            myinputId.classList.add('error');
+            return;
+        }
+        
+        let room = rooms.find(room => room.id === id);
+
+        
+        
+        if (!room) {
+            showError('roomError2', "Такой комнаты не существует.");
+            return;
+        }
+        
+        if (!room.adminOnline) {
+            showError('roomError2', "Вы не можете зайти. В данной комнате нет админа. Если вы были администратором этой комнаты, введите идентификатор и нажмите «Создать комнату»");
+            document.getElementById("createId").focus();
+            return;
+        }
+         if (Object.values(room.allnames).filter(existingName =>existingName !== null).some(existingName =>existingName.toLowerCase()===name.toLowerCase())) {
+            showError('roomError2', "Пользователь с таким именем в комнате уже существует!");
+            myName.classList.add('error');
+            return;
+        }
+         
+    if ( room.maxViewers!== null && room.viewers >= room.maxViewers) {
+       showError('roomError2', "Вы не можете зайти. В комнате достигнут лимит по количеству человек");
+        return;
+        
+    }
+
+        const find = rooms.find(room => room.id === myinputId.value.trim());
+        
+       
+        if (find.type === 'public') {
+    const params = new URLSearchParams({ room: id, name });
+    window.location.href = `myclient.html?${params}`;
+    return;
+}
+
+        if (find && find.type === 'private') {
+            listSocket.send(JSON.stringify({ 
+                type: 'check-parol', 
+                channel: id, 
+                password: document.getElementById('joinPass').value
+            }));
+
+            const prevOnMessage = listSocket.onmessage;
+
+            listSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.type === 'rooms-list') {
+                    prevOnMessage(e);
+                    return;
+                }
+
+              
+                if (data.type === 'parol-true') {
+    const params = new URLSearchParams({ room: id, name, pass: document.getElementById('joinPass').value });
+
+    window.location.href = `myclient.html?${params}`;
+}
+
+                if (data.type === 'parol-false') {
+                    showError('roomError2', "Пароль неверен");
+                    document.getElementById('joinPass').classList.add('error');
+                    listSocket.onmessage = prevOnMessage;
+                }
+            };
+        }
+    }
+    
+   function selectRoom(id, type) {
+        document.getElementById('joinId').value = id;
+        if (type === 'private') {
+            document.getElementById('joinPrivateField').style.display = 'block';
+        } else {
+            document.getElementById('joinPrivateField').style.display = 'none';
+        }
+        if (window.innerWidth <= 768) {
+            const joinTabBtn = document.getElementById('tabJoin');
+            if (joinTabBtn) {
+                switchTab('join', joinTabBtn);
+            }          
+        } 
+        document.getElementById('joinName').focus();
+        
+    }
+    
+    document.getElementById('joinPass').addEventListener("input", function() {
+        document.getElementById("roomError2").style.display = 'none';
+    });
+
+    document.getElementById('joinId').addEventListener("input", function() {
+        if (this.value.trim()) {
+            this.classList.remove('error');
+            document.getElementById("roomError2").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+        
+        const find = rooms.find(room => room.id === this.value.trim());
+        
+        if (find && find.type === 'private') {
+            document.getElementById('joinPrivateField').style.display = 'block';
+        } else {
+            document.getElementById('joinPrivateField').style.display = 'none';
+        }
+    });
+
+    document.getElementById('createId').addEventListener("input", function() {
+        if (this.value.trim()) {
+            this.classList.remove('error');
+            document.getElementById("roomError1").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+
+        const find = rooms.find(room => room.id === this.value.trim());
+        
+        if (find && !find.adminOnline) {
+            document.getElementById('codeField').style.display = 'block';
+            document.getElementById('typeDesc').style.display = 'none';
+            isRestoreMode = true;
+            console.log(isRestoreMode);
+        } else {
+            document.getElementById('codeField').style.display = 'none';
+            document.getElementById('typeDesc').style.display = 'block';
+            isRestoreMode = false;
+        }
+    });
+    
+    document.getElementById('code').addEventListener("input", function() {
+        if (this.value.trim()) {
+            this.classList.remove('error');
+            document.getElementById("roomError1").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+    });
+
+    document.getElementById('createPass').addEventListener("input", function() {
+        if (this.value.trim().length >= 4) {
+            this.classList.remove('error');
+            document.getElementById("roomError1").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+    });
+
+    document.getElementById('joinName').addEventListener("input", function() {
+        if (this.value.trim().length > 0) {
+            this.classList.remove('error');
+            document.getElementById("roomError2").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+    });
+
+    document.getElementById('createDesc').addEventListener("input", function() {
+        if (this.value.trim().length >= 5) {
+            this.classList.remove('error');
+            document.getElementById("roomError1").style.display = 'none';
+        } else {
+            this.classList.add('error');
+        }
+    });
+    
+    renderRooms();
+</script>
+</body>
+</html>
