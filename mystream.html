@@ -733,7 +733,7 @@ function removeFromProbingQueue(id) {
 
 
 const MIN_FPS_MAJORITY = 15;   
-const MIN_FPS_ANY = 13;        
+const MIN_FPS_ANY = 12;        
 
 
 async function hasCpuQualityLimit(peerIds) {
@@ -838,7 +838,7 @@ async function admitWithProbe(id, viewerCount) {
 
                 let lowFpsCount = 0;
                 for (const pid of allIds) {
-                    if ( snap[pid] !== null && snap[pid] < MIN_FPS_MAJORITY) lowFpsCount++;
+                    if ( snap[pid] !== null && snap[pid] <= MIN_FPS_MAJORITY) lowFpsCount++;
                 }
                 const majorityBad = allIds.length > 0 && lowFpsCount / allIds.length > 0.5;
                 const anyCritical = Object.values(snap).some(fps => fps !== null && fps <= MIN_FPS_ANY);
