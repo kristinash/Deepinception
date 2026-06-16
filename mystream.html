@@ -733,25 +733,25 @@ function removeFromProbingQueue(id) {
 
 
 const MIN_FPS_MAJORITY = 15;   
-const MIN_FPS_ANY = 12;        
+const MIN_FPS_ANY = 10;        
 
 
-async function hasCpuQualityLimit(peerIds) {
-    for (const id of peerIds) {
-        const pc = peerConnection[id];
-        if (!pc || pc.connectionState === 'closed') continue;
-        const stats = await pc.getStats();
-        for (const stat of stats.values()) {
-            if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
-                if (stat.qualityLimitationReason === 'cpu') {
-                    console.log(`[probe] CPU limit detected for ${id.slice(0,6)}`);
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
+// async function hasCpuQualityLimit(peerIds) {
+//     for (const id of peerIds) {
+//         const pc = peerConnection[id];
+//         if (!pc || pc.connectionState === 'closed') continue;
+//         const stats = await pc.getStats();
+//         for (const stat of stats.values()) {
+//             if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+//                 if (stat.qualityLimitationReason === 'cpu') {
+//                     console.log(`[probe] CPU limit detected for ${id.slice(0,6)}`);
+//                     return true;
+//                 }
+//             }
+//         }
+//     }
+//     return false;
+// }
 
 async function snapshotFps(ids) {
     const result = {};
@@ -802,11 +802,11 @@ async function admitWithProbe(id, viewerCount) {
     channel.postMessage({ type: 'checking', id, roomId, seconds: TEST_DURATION_MS / 1000 });
     try {
         const existingIds = Object.keys(peerConnection);
-        if (await hasCpuQualityLimit(existingIds)) {
-            console.log(`[probe] ${id.slice(0,6)} отклонён: у существующих зрителей проблемы CPU`);
-            channel.postMessage({ type: 'room-full', id, roomId, message: "технические характеристки" });
-            return;
-        }
+        // if (await hasCpuQualityLimit(existingIds)) {
+        //     console.log(`[probe] ${id.slice(0,6)} отклонён: у существующих зрителей проблемы CPU`);
+        //     channel.postMessage({ type: 'room-full', id, roomId, message: "технические характеристки" });
+        //     return;
+        // }
         
       
 
@@ -842,9 +842,10 @@ async function admitWithProbe(id, viewerCount) {
                 }
                 const majorityBad = allIds.length > 0 && lowFpsCount / allIds.length > 0.5;
                 const anyCritical = Object.values(snap).some(fps => fps !== null && fps <= MIN_FPS_ANY);
-                const hasCpuLimit = await hasCpuQualityLimit(allIds);
+                // const hasCpuLimit = await hasCpuQualityLimit(allIds);
 
-                const bad = majorityBad || anyCritical || hasCpuLimit;
+                // const bad = majorityBad || anyCritical || hasCpuLimit;
+                 const bad = majorityBad || anyCritical;
                 if (bad) badNews++;
 
                 if (counts * INTERVAL_MS >= TEST_DURATION_MS) {
